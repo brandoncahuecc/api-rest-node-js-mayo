@@ -20,13 +20,13 @@ exports.obtenerUsuarios = async (req, res) => {
 exports.obtenerUnUsuario = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-  
+
     const [users] = await pool.query("SELECT * FROM users WHERE id = ?", [id]);
 
-    if(users && users.length > 0){
-        res.json(users[0]);
-    }else{
-        res.status(404).json({ mensaje: "Usuario no encontrado" });
+    if (users && users.length > 0) {
+      res.json(users[0]);
+    } else {
+      res.status(404).json({ mensaje: "Usuario no encontrado" });
     }
   } catch (error) {
     console.error("Error al obtener usuarios", error);
@@ -34,46 +34,78 @@ exports.obtenerUnUsuario = async (req, res) => {
   }
 };
 
-exports.crearUsuario = (req, res) => {
-  const { name, email } = req.body;
+exports.crearUsuario = async (req, res) => {
+  try {
+    const { name, email } = req.body;
 
-  if (!name || !email) {
-    return res.status(400).json({ mensaje: "Nombre y Email son requeridos" });
-  }
+    if (!name || !email) {
+      return res.status(400).json({ mensaje: "Nombre y Email son requeridos" });
+    }
 
-  const newUser = { id: nextId++, name, email };
-  usuarios.push(newUser);
-  res.status(201).json(newUser);
-};
+    const [result] = await pool.query(
+      "INSERT INTO users (name, email) VALUES(?, ?)",
+      [name, email]
+    );
 
-exports.actualizarUsuario = (req, res) => {
-  const id = parseInt(req.params.id);
-  const { name, email } = req.body;
+    const newUser = { id: result.insertId, name, email };
 
-  const usuarioIndex = usuarios.findIndex((u) => u.id === id);
-
-  if (usuarioIndex !== -1) {
-    usuarios[usuarioIndex] = {
-      ...usuarios[usuarioIndex],
-      name: name || usuarios[usuarioIndex].name,
-      email: email || usuarios[usuarioIndex].email,
-    };
-
-    res.json(usuarios[usuarioIndex]);
-  } else {
-    res.status(404).json({ mensaje: "Usuario no encontrado" });
+    res.status(201).json(newUser);
+  } catch (error) {
+    console.error("Error al crear usuario", error);
+    res.status(500).json({ mensaje: "Error interno del servidor" });
   }
 };
 
-exports.eliminarUsuario = (req, res) => {
-  const id = parseInt(req.params.id);
+exports.actualizarUsuario = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { name, email } = req.body;
 
-  const usuarioIndex = usuarios.findIndex((u) => u.id === id);
+    let query = "UPDATE users SET ";
+    const params = [];
+    if (name) {
+      query += "name = ?, ";
+      params.push(name);
+    }
+    if (email) {
+      query += "email = ?, ";
+      params.push(email);
+    }
 
-  if (usuarioIndex !== -1) {
-    usuarios.splice(usuarioIndex, 1);
-    res.status(204).send();
-  } else {
-    res.status(404).json({ mensaje: "Usuario no encontrado" });
+    query = query.slice(0, -2);
+    query += " WHERE id = ?";
+    params.push(id);
+
+    const [result] = await pool.query(query, params);
+
+    if (result.affectedRows > 0) {
+      const [users] = await pool.query("SELECT * FROM users WHERE id = ?", [
+        id,
+      ]);
+
+      res.json(users[0]);
+    } else {
+      res.status(404).json({ mensaje: "Usuario no encontrado" });
+    }
+  } catch (error) {
+    console.error("Error al actualizar usuario", error);
+    res.status(500).json({ mensaje: "Error interno del servidor" });
+  }
+};
+
+exports.eliminarUsuario = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+
+    const [result] = await pool.query("DELETE FROM users WHERE id = ?", [id]);
+
+    if (result.affectedRows > 0) {
+      res.status(204).send();
+    } else {
+      res.status(404).json({ mensaje: "Usuario no encontrado" });
+    }
+  } catch (error) {
+    console.error("Error al eliminar usuario", error);
+    res.status(500).json({ mensaje: "Error interno del servidor" });
   }
 };

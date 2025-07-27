@@ -18,7 +18,7 @@ async function testConnection() {
     console.log("Conexión a base de datos exitosa");
     connection.release();
   } catch (error) {
-    console.error("Error al conectarme a la base de datos:", error.message);
+    console.error("Error al conectarme a la base de datos:", error);
     process.exit(1);
   }
 }
