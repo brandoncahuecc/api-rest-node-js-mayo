@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const bcrypt = require("bcrypt");
 
 let usuarios = [
   { id: 1, name: "Jhon Doe", email: "jhon.doe@ejemplo.com" },
@@ -36,18 +37,22 @@ exports.obtenerUnUsuario = async (req, res) => {
 
 exports.crearUsuario = async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, password, role } = req.body;
 
-    if (!name || !email) {
-      return res.status(400).json({ mensaje: "Nombre y Email son requeridos" });
+    if (!name || !email || !password || !role) {
+      return res
+        .status(400)
+        .json({ mensaje: "Debe ingresar todos los campos requeridos" });
     }
 
+    const passwordHash = await bcrypt.hash(password, 10);
+
     const [result] = await pool.query(
-      "INSERT INTO users (name, email) VALUES(?, ?)",
-      [name, email]
+      "INSERT INTO users (name, email, password, role) VALUES(?, ?, ?, ?)",
+      [name, email, passwordHash, role]
     );
 
-    const newUser = { id: result.insertId, name, email };
+    const newUser = { id: result.insertId, name, email, role };
 
     res.status(201).json(newUser);
   } catch (error) {
@@ -59,7 +64,7 @@ exports.crearUsuario = async (req, res) => {
 exports.actualizarUsuario = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, email } = req.body;
+    const { name, email, password, role } = req.body;
 
     let query = "UPDATE users SET ";
     const params = [];
@@ -70,6 +75,15 @@ exports.actualizarUsuario = async (req, res) => {
     if (email) {
       query += "email = ?, ";
       params.push(email);
+    }
+    if (password) {
+      query += "password = ?, ";
+      const passwordHash = await bcrypt.hash(password, 10);
+      params.push(passwordHash);
+    }
+    if (role) {
+      query += "role = ?, ";
+      params.push(role);
     }
 
     query = query.slice(0, -2);
