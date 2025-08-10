@@ -1,0 +1,112 @@
+#version: '3.8'
+
+services:
+  mysql_server:
+    image: mysql:8.0
+    container_name: mysql_container
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Ab123456*
+      MYSQL_DATABASE: curso_api_node
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data_server:/var/lib/mysql
+    networks:
+      - red-node-js
+
+  rabbitmq_server:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_container
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - red-node-js
+
+  api_autenticacion:
+    build:
+      context: ./api-autenticacion
+      dockerfile: Dockerfile
+    container_name: autenticacion_container
+    restart: always
+    ports:
+      - "7002:3002"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_PORT: ${DB_PORT}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET_REFRESH: ${JWT_SECRET_REFRESH}
+      JWT_TOKEN_EXPIRATION: ${JWT_TOKEN_EXPIRATION}
+      JWT_TOKEN_REFRESH_EXPIRATION: ${JWT_TOKEN_REFRESH_EXPIRATION}
+    depends_on:
+      - mysql_server
+    networks:
+      - red-node-js
+
+  api_notificacion:
+    build:
+      context: ./api-notificaciones
+      dockerfile: Dockerfile
+    container_name: notificacion_container
+    restart: always
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      NOTIFICACION_QUEUE: ${NOTIFICACION_QUEUE}
+    networks:
+      - red-node-js
+
+  api_usuarios:
+    build:
+      context: ./api-usuarios
+      dockerfile: Dockerfile
+    container_name: usuario_container
+    restart: always
+    ports:
+      - "7000:3000"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_PORT: ${DB_PORT}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - mysql_server
+    networks:
+      - red-node-js
+
+  api_ventas:
+    build:
+      context: ./api-ventas
+      dockerfile: Dockerfile
+    container_name: venta_container
+    restart: always
+    ports:
+      - "7001:3001"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_PORT: ${DB_PORT}
+      JWT_SECRET: ${JWT_SECRET}
+      API_USUARIO_URL: ${API_USUARIO_URL}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      NOTIFICACION_QUEUE: ${NOTIFICACION_QUEUE}
+
+    depends_on:
+      - mysql_server
+    networks:
+      - red-node-js
+
+volumes:
+  mysql_data_server: {}
+
+networks:
+  red-node-js:
+    driver: bridge
